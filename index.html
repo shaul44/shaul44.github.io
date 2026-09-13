@@ -53,6 +53,7 @@
 
   <main class="main-container">
     <div class="agent-grid" id="agent-grid"></div>
+    <p id="last-checked" style="color: var(--text-muted); font-size: 0.8rem; margin-top: 14px;"></p>
   </main>
 </div>
 
@@ -62,6 +63,12 @@ const GOOGLE_CLIENT_ID = "1018347323666-eelrt75mg2rr844pdb8lh4qseu7haheq.apps.go
 
 // Only these Google accounts may enter the dashboard.
 const ALLOWED_EMAILS = ["shaul31@gmail.com"];
+
+// Secure proxy (Vercel function) to the internal server's read-only status
+// endpoint - see /opt/ui-agent/api_server.py:/api/external/status. Never
+// call the internal server directly from this page (self-signed cert,
+// non-standard port - blocked on many networks by design).
+const STATUS_API = "https://dashboard-proxy-phi.vercel.app/api/status";
 
 const AGENTS = [
   {
@@ -128,6 +135,36 @@ function renderDashboard() {
   }).join("");
 }
 
+async function fetchLiveStatus() {
+  const lastChecked = document.getElementById("last-checked");
+  try {
+    const res = await fetch(STATUS_API, { cache: "no-store" });
+    if (!res.ok) throw new Error("HTTP " + res.status);
+    const data = await res.json();
+
+    // Reaching this endpoint at all confirms the internal server (port 8998) is up.
+    const dashboardApi = AGENTS.find(a => a.name === "Dashboard API");
+    if (dashboardApi) dashboardApi.status = "running";
+
+    const broker = AGENTS.find(a => a.name === "Password Broker");
+    if (broker && data.services && data.services.password_broker) broker.status = "running";
+
+    const qa = AGENTS.find(a => a.name === "QA Agent");
+    if (qa && data.services && data.services.qa_agent) qa.status = "running";
+
+    renderDashboard();
+    if (lastChecked) {
+      const t = new Date(data.timestamp || Date.now()).toLocaleTimeString("he-IL");
+      lastChecked.textContent = "עודכן לאחרונה: " + t;
+    }
+  } catch (e) {
+    // Fail silently - cards just keep their default static status, exactly
+    // as before this feature existed. No error shown to the user for a
+    // best-effort live check.
+    if (lastChecked) lastChecked.textContent = "לא ניתן היה לאחזר סטטוס חי כרגע";
+  }
+}
+
 function decodeJwt(token) {
   const payload = token.split(".")[1];
   return JSON.parse(decodeURIComponent(atob(payload.replace(/-/g, "+").replace(/_/g, "/")).split("").map(c =>
@@ -150,6 +187,7 @@ function showDashboard(profile) {
   document.getElementById("user-avatar").src = profile.picture;
   document.getElementById("user-name").textContent = profile.name;
   renderDashboard();
+  fetchLiveStatus();
 }
 
 function logout() {

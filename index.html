@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>מרכז בקרת סוכנים | shaul44</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<link rel="stylesheet" href="styles.css">
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+<style>
+  #login-screen { min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 22px; text-align: center; padding: 20px; }
+  #login-screen h1 { font-size: 1.6rem; }
+  #login-screen p { color: var(--text-muted); max-width: 420px; }
+  #login-error { color: var(--danger); font-size: 0.9rem; display: none; }
+  #dashboard { display: none; }
+  .user-chip { display: flex; align-items: center; gap: 10px; }
+  .user-chip img { width: 32px; height: 32px; border-radius: 50%; }
+  .btn-logout { background: none; border: 1px solid var(--border-color); color: var(--text-muted); padding: 6px 12px; border-radius: 8px; cursor: pointer; font-size: 0.85rem; }
+  .btn-logout:hover { border-color: var(--danger); color: var(--danger); }
+  .agent-card { display: flex; flex-direction: column; gap: 10px; text-decoration: none; }
+  .agent-card h3 { font-size: 1.1rem; display: flex; align-items: center; gap: 8px; }
+  .agent-card p { color: var(--text-muted); font-size: 0.85rem; }
+  .agent-card.disabled { opacity: 0.55; cursor: not-allowed; }
+</style>
+</head>
+<body>
+
+<div id="login-screen">
+  <i class="fas fa-network-wired brand-icon" style="font-size:3rem;"></i>
+  <h1>מרכז בקרת סוכנים</h1>
+  <p>התחברות מאובטחת דרך חשבון Google מורשה בלבד</p>
+  <div id="g_id_signin"></div>
+  <div id="login-error">גישה נדחתה — חשבון זה אינו מורשה לצפייה בדשבורד.</div>
+</div>
+
+<div id="dashboard">
+  <header class="navbar">
+    <div class="nav-container">
+      <div class="brand">
+        <i class="fas fa-network-wired brand-icon"></i>
+        <div class="brand-text">
+          <h1>מרכז בקרת סוכנים</h1>
+          <span class="subtitle">Multi-Agent Launcher</span>
+        </div>
+      </div>
+      <div class="nav-actions user-chip">
+        <img id="user-avatar" src="" alt="">
+        <span id="user-name"></span>
+        <button class="btn-logout" onclick="logout()"><i class="fas fa-right-from-bracket"></i> התנתק</button>
+      </div>
+    </div>
+  </header>
+
+  <main class="main-container">
+    <div class="agent-grid" id="agent-grid"></div>
+  </main>
+</div>
+
+<script>
+// TODO: replace with your real Google OAuth Client ID from console.cloud.google.com
+const GOOGLE_CLIENT_ID = "YOUR_GOOGLE_CLIENT_ID.apps.googleusercontent.com";
+
+// Only these Google accounts may enter the dashboard.
+const ALLOWED_EMAILS = ["shaul31@gmail.com"];
+
+const AGENTS = [
+  {
+    name: "Email AI Agent",
+    icon: "fa-envelope",
+    desc: "ניהול ועיבוד הודעות אימייל אוטומטי",
+    url: "http://147.93.58.13:8085",
+    status: "running"
+  },
+  {
+    name: "Langfuse",
+    icon: "fa-chart-line",
+    desc: "מעקב וניטור טיוטות והרצות AI",
+    url: "https://langfuse.147-93-58-13.sslip.io",
+    status: "running"
+  },
+  {
+    name: "Domain Agent — hermesvip.tech",
+    icon: "fa-globe",
+    desc: "פריסות ודשבורד ראשי — בתחזוקה, הפריסה האחרונה נכשלה (503)",
+    url: null,
+    status: "maintenance"
+  },
+  {
+    name: "Dashboard API",
+    icon: "fa-gauge",
+    desc: "ניהול Staging, Visual Diff, Deploy & Rollback — פנימי בלבד (127.0.0.1:8999)",
+    url: null,
+    status: "internal"
+  },
+  {
+    name: "Password Broker",
+    icon: "fa-key",
+    desc: "ניהול ואספקת אישורי גישה מאובטחים — פנימי בלבד (127.0.0.1:5001)",
+    url: null,
+    status: "internal"
+  },
+  {
+    name: "QA Agent",
+    icon: "fa-vial-circle-check",
+    desc: "בדיקות עשן, רגרסיה ואימות תקינות — פנימי בלבד (127.0.0.1:5002)",
+    url: null,
+    status: "internal"
+  }
+];
+
+function statusBadge(status) {
+  if (status === "running") return '<span class="status-badge status-running"><i class="fas fa-circle"></i> פעיל</span>';
+  if (status === "maintenance") return '<span class="status-badge status-waiting"><i class="fas fa-triangle-exclamation"></i> בתחזוקה</span>';
+  return '<span class="status-badge status-stopped"><i class="fas fa-lock"></i> פנימי</span>';
+}
+
+function renderDashboard() {
+  const grid = document.getElementById("agent-grid");
+  grid.innerHTML = AGENTS.map(a => {
+    const disabled = !a.url;
+    const tag = disabled ? "div" : "a";
+    const hrefAttr = disabled ? "" : `href="${a.url}" target="_blank" rel="noopener"`;
+    return `<${tag} class="agent-card${disabled ? " disabled" : ""}" ${hrefAttr}>
+      <h3><i class="fas ${a.icon}"></i> ${a.name}</h3>
+      ${statusBadge(a.status)}
+      <p>${a.desc}</p>
+    </${tag}>`;
+  }).join("");
+}
+
+function decodeJwt(token) {
+  const payload = token.split(".")[1];
+  return JSON.parse(decodeURIComponent(atob(payload.replace(/-/g, "+").replace(/_/g, "/")).split("").map(c =>
+    "%" + ("00" + c.charCodeAt(0).toString(16)).slice(-2)).join("")));
+}
+
+function handleCredentialResponse(response) {
+  const profile = decodeJwt(response.credential);
+  if (!ALLOWED_EMAILS.includes(profile.email)) {
+    document.getElementById("login-error").style.display = "block";
+    return;
+  }
+  sessionStorage.setItem("dashboard_user", JSON.stringify(profile));
+  showDashboard(profile);
+}
+
+function showDashboard(profile) {
+  document.getElementById("login-screen").style.display = "none";
+  document.getElementById("dashboard").style.display = "block";
+  document.getElementById("user-avatar").src = profile.picture;
+  document.getElementById("user-name").textContent = profile.name;
+  renderDashboard();
+}
+
+function logout() {
+  sessionStorage.removeItem("dashboard_user");
+  location.reload();
+}
+
+window.onload = () => {
+  google.accounts.id.initialize({
+    client_id: GOOGLE_CLIENT_ID,
+    callback: handleCredentialResponse
+  });
+  google.accounts.id.renderButton(
+    document.getElementById("g_id_signin"),
+    { theme: "filled_black", size: "large", shape: "pill", text: "signin_with" }
+  );
+
+  const cached = sessionStorage.getItem("dashboard_user");
+  if (cached) showDashboard(JSON.parse(cached));
+};
+</script>
+</body>
+</html>

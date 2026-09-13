@@ -1,0 +1,46 @@
+:root {
+    --bg-main: #0b1120;
+    --bg-card: #1e293b;
+    --bg-card-hover: #334155;
+    --border-color: #334155;
+    --primary: #38bdf8;
+    --primary-hover: #0284c7;
+    --success: #4ade80;
+    --warning: #f59e0b;
+    --danger: #ef4444;
+    --text-main: #f8fafc;
+    --text-muted: #94a3b8;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
+body { background-color: var(--bg-main); color: var(--text-main); min-height: 100vh; }
+
+.navbar { background-color: #0f172a; border-bottom: 1px solid var(--border-color); padding: 14px 24px; position: sticky; top: 0; z-index: 100; }
+.nav-container { max-width: 1300px; margin: 0 auto; display: flex; justify-content: space-between; align-items: center; }
+.brand { display: flex; align-items: center; gap: 14px; }
+.brand-icon { font-size: 1.8rem; color: var(--primary); }
+.brand-text h1 { font-size: 1.25rem; font-weight: 700; color: #fff; }
+.brand-text .subtitle { font-size: 0.8rem; color: var(--text-muted); }
+
+.main-container { max-width: 1300px; margin: 24px auto; padding: 0 20px; }
+
+.agent-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 20px; }
+.agent-card { background-color: var(--bg-card); border: 1px solid var(--border-color); border-radius: 12px; padding: 22px; transition: all 0.2s ease; cursor: pointer; }
+.agent-card:hover { transform: translateY(-3px); border-color: var(--primary); background-color: var(--bg-card-hover); }
+
+.status-badge { padding: 4px 12px; border-radius: 20px; font-size: 0.8rem; font-weight: 600; display: inline-flex; align-items: center; gap: 6px; }
+.status-running { background: rgba(74, 222, 128, 0.15); color: var(--success); border: 1px solid var(--success); }
+.status-waiting { background: rgba(245, 158, 11, 0.15); color: var(--warning); border: 1px solid var(--warning); }
+.status-stopped { background: rgba(239, 68, 68, 0.15); color: var(--danger); border: 1px solid var(--danger); }
+
+.btn-outline, .btn-refresh { background: rgba(15, 23, 42, 0.6); border: 1px solid var(--border-color); color: var(--text-main); padding: 10px 16px; border-radius: 8px; cursor: pointer; font-size: 0.95rem; transition: all 0.2s; display: inline-flex; align-items: center; gap: 8px; font-weight: 500; }
+.btn-outline:hover, .btn-refresh:hover { background: #1e293b; border-color: var(--primary); color: #fff; }
+
+.agent-view { background: #0f172a; border: 1px solid var(--border-color); border-radius: 12px; padding: 24px; }
+
+/* שורות משאבים מוגדלות עבור Server Agent */
+.server-metrics-container { display: flex; flex-direction: column; gap: 14px; margin-top: 10px; }
+.server-metric-row { display: flex; justify-content: space-between; align-items: center; background: #1e293b; border: 1px solid #334155; border-radius: 8px; padding: 16px 24px; }
+.server-metric-row:hover { border-color: #38bdf8; }
+.metric-label { font-size: 1.3rem; font-weight: 600; color: #f8fafc; }
+.metric-value { font-size: 1.45rem; font-weight: 700; color: #38bdf8; letter-spacing: 0.5px; }

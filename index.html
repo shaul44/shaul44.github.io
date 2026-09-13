@@ -53,7 +53,6 @@
 
   <main class="main-container">
     <div class="agent-grid" id="agent-grid"></div>
-    <p id="last-checked" style="color: var(--text-muted); font-size: 0.8rem; margin-top: 14px;"></p>
   </main>
 </div>
 
@@ -63,12 +62,6 @@ const GOOGLE_CLIENT_ID = "1018347323666-eelrt75mg2rr844pdb8lh4qseu7haheq.apps.go
 
 // Only these Google accounts may enter the dashboard.
 const ALLOWED_EMAILS = ["shaul31@gmail.com"];
-
-// Secure proxy (Vercel function) to the internal server's read-only status
-// endpoint - see /opt/ui-agent/api_server.py:/api/external/status. Never
-// call the internal server directly from this page (self-signed cert,
-// non-standard port - blocked on many networks by design).
-const STATUS_API = "https://dashboard-proxy-phi.vercel.app/api/status";
 
 const AGENTS = [
   {
@@ -86,32 +79,11 @@ const AGENTS = [
     status: "running"
   },
   {
-    name: "Domain Agent — hermesvip.tech",
-    icon: "fa-globe",
-    desc: "פריסות ודשבורד ראשי — בתחזוקה, הפריסה האחרונה נכשלה (503)",
-    url: null,
-    status: "maintenance"
-  },
-  {
-    name: "Dashboard API",
+    name: "מרכז בקרת סוכנים (Dashboard, Broker, QA)",
     icon: "fa-gauge",
-    desc: "ניהול Staging, Visual Diff, Deploy & Rollback — פנימי בלבד (127.0.0.1:8999)",
-    url: null,
-    status: "internal"
-  },
-  {
-    name: "Password Broker",
-    icon: "fa-key",
-    desc: "ניהול ואספקת אישורי גישה מאובטחים — פנימי בלבד (127.0.0.1:5001)",
-    url: null,
-    status: "internal"
-  },
-  {
-    name: "QA Agent",
-    icon: "fa-vial-circle-check",
-    desc: "בדיקות עשן, רגרסיה ואימות תקינות — פנימי בלבד (127.0.0.1:5002)",
-    url: null,
-    status: "internal"
+    desc: "הדשבורד המלא — כולל Password Broker, QA Agent ו-Deploy/Rollback, כל אחד כטאב נפרד בתוך אותה כניסה מאובטחת דרך Google",
+    url: "https://147-93-58-13.sslip.io",
+    status: "running"
   }
 ];
 
@@ -133,36 +105,6 @@ function renderDashboard() {
       <p>${a.desc}</p>
     </${tag}>`;
   }).join("");
-}
-
-async function fetchLiveStatus() {
-  const lastChecked = document.getElementById("last-checked");
-  try {
-    const res = await fetch(STATUS_API, { cache: "no-store" });
-    if (!res.ok) throw new Error("HTTP " + res.status);
-    const data = await res.json();
-
-    // Reaching this endpoint at all confirms the internal server (port 8998) is up.
-    const dashboardApi = AGENTS.find(a => a.name === "Dashboard API");
-    if (dashboardApi) dashboardApi.status = "running";
-
-    const broker = AGENTS.find(a => a.name === "Password Broker");
-    if (broker && data.services && data.services.password_broker) broker.status = "running";
-
-    const qa = AGENTS.find(a => a.name === "QA Agent");
-    if (qa && data.services && data.services.qa_agent) qa.status = "running";
-
-    renderDashboard();
-    if (lastChecked) {
-      const t = new Date(data.timestamp || Date.now()).toLocaleTimeString("he-IL");
-      lastChecked.textContent = "עודכן לאחרונה: " + t;
-    }
-  } catch (e) {
-    // Fail silently - cards just keep their default static status, exactly
-    // as before this feature existed. No error shown to the user for a
-    // best-effort live check.
-    if (lastChecked) lastChecked.textContent = "לא ניתן היה לאחזר סטטוס חי כרגע";
-  }
 }
 
 function decodeJwt(token) {
@@ -187,7 +129,6 @@ function showDashboard(profile) {
   document.getElementById("user-avatar").src = profile.picture;
   document.getElementById("user-name").textContent = profile.name;
   renderDashboard();
-  fetchLiveStatus();
 }
 
 function logout() {
